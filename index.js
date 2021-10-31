@@ -3,6 +3,9 @@ require("dotenv").config();
 const express = require('express')
 const app = express()
 const cors = require('cors')
+const { ObjectId } = require('bson');
+// const { ObjectId } = require('bson');
+// const { ObjectId } = require('bson')
 app.use(cors())
 app.use(express.json())
 const port = process.env.PORT || 5000;
@@ -69,7 +72,6 @@ async function run() {
             // console.log(result);
             res.json(result)
         })
-
         // GET API for all orders
 
         app.get('/allorders', async (req, res) => {
@@ -77,6 +79,20 @@ async function run() {
             const result = await cursor.toArray();
             res.json(result)
 
+        })
+        // PUT API for update status 
+
+        app.put('/manageallusers/:id', async (req, res) => {
+            const orderId = req.params.id;
+            const filter = { _id: orderId }
+            const options = { upsert: true }
+            const updateDoc = {
+                $set: {
+                    status: 'approved'
+                }
+            }
+            const result = await ordersCollection.updateOne(filter, updateDoc, options)
+            res.json(result)
         })
 
 
@@ -97,6 +113,7 @@ async function run() {
             res.json(result)
             // console.log(title);
         })
+
 
 
 
