@@ -6,13 +6,36 @@ const cors = require('cors')
 const { ObjectId } = require('bson');
 // const { ObjectId } = require('bson');
 // const { ObjectId } = require('bson')
+const { initializeApp } = require('firebase-admin/app');
+const admin = require("firebase-admin");
 app.use(cors())
 app.use(express.json())
 const port = process.env.PORT || 5000;
+const serviceAccount = require("./explore_world_token.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.m8c0v.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
+async function verifyToken(req, res, next) {
+
+    if (req?.headers?.authorization.startsWith("Bearer ")) {
+        const idToken = req?.headers?.authorization.split(" ")[1]
+
+        try {
+            const decodeUser = await admin.auth().verifyIdToken(idToken);
+            req.decodedUser = decodeUser.email;
+        } catch {
+
+        }
+    }
+
+    next()
+}
 
 async function run() {
     try {
@@ -64,13 +87,18 @@ async function run() {
 
         //GET API for myOrders
 
-        app.get('/myorders', async (req, res) => {
+        app.get('/myorders', verifyToken, async (req, res) => {
             const myemail = req.query.email;
-            const query = { email: `${myemail}` };
-            // const query = { email: { $in: Object.values(myemail) } }
-            const result = await ordersCollection.find(query).toArray()
+            if (req?.decodedUser === myemail) {
+                const query = { email: `${myemail}` };
+                console.log(req.headers.authorization)
+                const result = await ordersCollection.find(query).toArray()
+                res.json(result)
+            } else {
+                res.json({ message: 'Unauthorized user' })
+            }
             // console.log(result);
-            res.json(result)
+
         })
         // GET API for all orders
 
